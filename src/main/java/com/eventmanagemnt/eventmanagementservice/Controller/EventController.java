@@ -9,7 +9,15 @@ import com.eventmanagemnt.eventmanagementservice.Service.EventService;
 import com.eventmanagemnt.eventmanagementservice.Utility.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.security.Keys;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -165,5 +173,86 @@ public class EventController {
     @DeleteMapping("/deleteEvent")
     public EventResponse deleteEvent(@RequestBody DeleteEventRequest request){
         return eventService.deleteEvent(request.getEventId(),request.getHostId());
+    }
+
+    @Operation(summary = "Add event to traveller's wishlist")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Event added to wishlist"),
+            @ApiResponse(responseCode = "400", description = "Missing eventId or travellerId", content = @Content)
+    })
+    @PostMapping(value = "/addToWishlist", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> addToWishlist(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "eventId and travellerId in JSON format",
+                    required = true,
+                    content = @Content(schema = @Schema(
+                            example = "{\"eventId\": \"event123\", \"travellerId\": \"traveller001\"}"
+                    ))
+            )
+            @RequestBody Map<String, String> request) {
+        String eventId = request.get("eventId");
+        String travellerId = request.get("travellerId");
+
+        if (eventId == null || travellerId == null) {
+            return ResponseEntity.badRequest().body("Missing eventId or travellerId");
+        }
+
+        eventService.addToWishlist(eventId, travellerId);
+        return ResponseEntity.ok("Added to wishlist successfully");
+    }
+    @Operation(summary = "Remove event from traveller's wishlist")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Event removed from wishlist"),
+            @ApiResponse(responseCode = "400", description = "Missing eventId or travellerId", content = @Content)
+    })
+    @PostMapping(value = "/removeFromWishlist", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> removeFromWishlist(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "eventId and travellerId in JSON format",
+                    required = true,
+                    content = @Content(schema = @Schema(
+                            example = "{\"eventId\": \"event123\", \"travellerId\": \"traveller001\"}"
+                    ))
+            )
+            @RequestBody Map<String, String> request) {
+        String eventId = request.get("eventId");
+        String travellerId = request.get("travellerId");
+
+        if (eventId == null || travellerId == null) {
+            return ResponseEntity.badRequest().body("Missing eventId or travellerId");
+        }
+
+        eventService.removeFromWishlist(eventId, travellerId);
+        return ResponseEntity.ok("Removed from wishlist successfully");
+    }
+    @Operation(summary = "Get all event IDs in a traveller's wishlist")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of event IDs"),
+            @ApiResponse(responseCode = "400", description = "Invalid travellerId", content = @Content)
+    })
+    @GetMapping("/getWishlistByTraveller")
+    public ResponseEntity<List<String>> getWishlistByTraveller(
+            @Parameter(description = "ID of the traveller", example = "traveller001")
+            @RequestParam("travellerId") String travellerId) {
+        if (travellerId == null || travellerId.isBlank()) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+        List<String> wishlist = eventService.getWishlistByTraveller(travellerId);
+        return ResponseEntity.ok(wishlist);
+    }
+    @Operation(summary = "Get all traveller IDs who added the event to their wishlist")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of traveller IDs"),
+            @ApiResponse(responseCode = "400", description = "Invalid eventId", content = @Content)
+    })
+    @GetMapping("/getWishlistByEvent")
+    public ResponseEntity<List<String>> getWishlistByEvent(
+            @Parameter(description = "ID of the event", example = "event123")
+            @RequestParam("eventId") String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+        List<String> wishlist = eventService.getWishlistByEvent(eventId);
+        return ResponseEntity.ok(wishlist);
     }
 }
